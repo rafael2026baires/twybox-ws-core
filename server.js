@@ -222,7 +222,38 @@ wss.on('connection', (ws, req) => {
     // Guardar última posición
     const tmap = getTenantMap(tenantId);
     tmap.set(unitId, { lat, lng, ts });
+
+        
+    // -------------------------------------------------------    
+    // === FILTRO DE SALTO IMPOSIBLE ===
+    const prev = tmap.get(unitId);
+    if (prev) {
+      const dtSec = (ts - prev.ts) / 1000;
+      if (dtSec > 0) {
+        const R = 6371000; // radio Tierra (m)
+        const toRad = x => x * Math.PI / 180;
     
+        const dLat = toRad(lat - prev.lat);
+        const dLng = toRad(lng - prev.lng);
+    
+        const a =
+          Math.sin(dLat/2) ** 2 +
+          Math.cos(toRad(prev.lat)) *
+          Math.cos(toRad(lat)) *
+          Math.sin(dLng/2) ** 2;
+    
+        const distM = 2 * R * Math.asin(Math.sqrt(a));
+    
+        // umbral: 300 m en ~10 s
+        if (distM > 300 && dtSec <= 20) {
+          // salto imposible → ignorar
+          return;
+        }
+      }
+    }
+    // -----------------------------------------------------
+
+        
     // === PERSISTENCIA DESACOPLADA (ENCOLAR) ===
     persistQueue.push({
       tenantId: ws.tenantId,
