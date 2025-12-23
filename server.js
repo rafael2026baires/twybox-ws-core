@@ -3,19 +3,43 @@
 const http = require('http');
 const WebSocket = require('ws');
 
+const { startPersistWorker } = require('./persist_mysql'); // ✅ PRIMERO
+
 const PORT = process.env.PORT || 3000;
+
+const UNIT_TTL_MS = 3 * 60 * 1000;
+const CLEAN_EVERY_MS = 60 * 1000;
+
+const persistQueue = [];
+const MAX_QUEUE = 5000;
+
+startPersistWorker({ persistQueue });   // ✅ DESPUÉS
+console.log('>>> startPersistWorker() ejecutado <<<');
+
 
 // HTTP server (sirve para health y para "upgrade" a WebSocket)
 const server = http.createServer((req, res) => {
-  if (req.url === '/health') {
+    if (req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
-      ok: true,
-      ts: Date.now(),
-      clients: wss.clients.size
+    ok: true,
+    ts: Date.now(),
+    clients: wss.clients.size
     }));
     return;
-  }
+    }
+    
+    if (req.url === '/stats') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+    ok: true,
+    ts: Date.now(),
+    stats,
+    tenants: lastByTenant.size
+    }));
+    return;
+    }
+  
 
   res.writeHead(200, { 'Content-Type': 'text/plain' });
   res.end('Twybox WS core online. Use /health or WebSocket.\n');
@@ -23,35 +47,66 @@ const server = http.createServer((req, res) => {
 
 // WebSocket server
 const wss = new WebSocket.Server({ server });
+const stats = {
+  connections: 0,
+  posAccepted: 0,
+  posRejected: 0
+};
 
-// Memoria mínima (última posición por unidad)
-const lastByUnit = new Map();
+// tenantId -> Map(unitId -> { lat, lng, ts })
+const lastByTenant = new Map();
+
+// tenantId -> Map(unitId -> lastAcceptedTs)
+const lastSeenTsByTenant = new Map();
+
 
 function safeJsonParse(s) {
   try { return JSON.parse(s); } catch { return null; }
 }
 
-function broadcast(obj) {
+function getTenantMap(tenantId) {
+  if (!lastByTenant.has(tenantId)) {
+    lastByTenant.set(tenantId, new Map());
+  }
+  return lastByTenant.get(tenantId);
+}
+
+function getTenantTsMap(tenantId) {
+  if (!lastSeenTsByTenant.has(tenantId)) {
+    lastSeenTsByTenant.set(tenantId, new Map());
+  }
+  return lastSeenTsByTenant.get(tenantId);
+}
+
+function broadcastToTenant(tenantId, obj) {
   const msg = JSON.stringify(obj);
   for (const client of wss.clients) {
-    if (client.readyState === WebSocket.OPEN) {
+    if (
+      client.readyState === WebSocket.OPEN &&
+      client.tenantId === tenantId
+    ) {
       client.send(msg);
     }
   }
 }
 
 wss.on('connection', (ws, req) => {
+    
+  ws.tenantId = null;
+  ws.unitId = null;
+  
+  stats.connections++;
   ws.isAlive = true;
   ws.on('pong', () => { ws.isAlive = true; });
 
   console.log('WS connected:', req.socket.remoteAddress);
 
   // Opcional: al conectar, mandar "snapshot" de últimas posiciones
-  ws.send(JSON.stringify({
-    type: 'hello',
-    ts: Date.now(),
-    snapshot: Object.fromEntries(lastByUnit)
-  }));
+    ws.send(JSON.stringify({
+      type: 'hello',
+      ts: Date.now(),
+      note: 'send tenantId to receive data'
+    }));
 
   ws.on('message', (data) => {
     const text = Buffer.isBuffer(data) ? data.toString('utf8') : String(data);
@@ -61,28 +116,137 @@ wss.on('connection', (ws, req) => {
       ws.send(JSON.stringify({ type: 'error', error: 'invalid_json' }));
       return;
     }
+    
+    
+    if (msg.type === 'register') {
+      const tenantId = String(msg.tenantId || '').trim();
+      const unitId   = String(msg.unitId || '').trim();
+    
+      if (!tenantId || !unitId) {
+        ws.send(JSON.stringify({
+          type: 'error',
+          error: 'bad_register_payload'
+        }));
+        return;
+      }
+    
+      ws.tenantId = tenantId;
+      ws.unitId = unitId;
+    
+      ws.send(JSON.stringify({
+        type: 'registered',
+        tenantId,
+        unitId,
+        ts: Date.now()
+      }));
+      
+    const tmap = lastByTenant.get(tenantId);
+    
+    if (tmap && tmap.size > 0) {
+      const snapshot = [];
+      for (const [uId, data] of tmap.entries()) {
+        snapshot.push({
+          unitId: uId,
+          lat: data.lat,
+          lng: data.lng,
+          ts: data.ts
+        });
+      }
+    
+      ws.send(JSON.stringify({
+        v: 1,
+        type: 'snapshot',
+        tenantId,
+        units: snapshot,
+        ts: Date.now()
+      }));
+    }
+    
+      return;
+    }
 
     // Tipos de mensaje esperados
     // 1) Posición: { type:'pos', unitId:'C001', lat:-34..., lng:-58..., ts?: 123 }
     if (msg.type === 'pos') {
-      const unitId = String(msg.unitId || '').trim();
+        
+        if (!ws.tenantId || !ws.unitId) {
+          ws.send(JSON.stringify({
+            type: 'error',
+            error: 'not_registered'
+          }));
+          return;
+        }
+        
+      const tenantId = String(msg.tenantId || '').trim();
+      const unitId   = String(msg.unitId || '').trim();
       const lat = Number(msg.lat);
       const lng = Number(msg.lng);
-      const ts = msg.ts ? Number(msg.ts) : Date.now();
-
-      if (!unitId || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+      const ts  = msg.ts ? Number(msg.ts) : Date.now();
+    
+      if (!tenantId || !unitId || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+        stats.posRejected++;  
         ws.send(JSON.stringify({ type: 'error', error: 'bad_pos_payload' }));
         return;
       }
+    
+        if (tenantId !== ws.tenantId || unitId !== ws.unitId) {
+          stats.posRejected++;
+          ws.send(JSON.stringify({
+            type: 'error',
+            error: 'identity_mismatch'
+          }));
+          return;
+        }
 
-      const payload = { type: 'pos', unitId, lat, lng, ts };
+    
+    // Throttle: aceptar ~1 evento cada 10s por unidad
+    const MIN_INTERVAL = 10_000; // 10 segundos
+    
+    const tsMap = getTenantTsMap(tenantId);
+    const lastTs = tsMap.get(unitId) || 0;
+    
+    if (ts - lastTs < MIN_INTERVAL) {
+      stats.posRejected++;    
+      ws.send(JSON.stringify({
+        type: 'error',
+        error: 'rate_limited',
+        retryInMs: MIN_INTERVAL - (ts - lastTs)
+      }));
+      return;
+    }
+    
+    // Registrar timestamp aceptado
+    tsMap.set(unitId, ts);
+    stats.posAccepted++;
 
-      // Guardar última posición en memoria
-      lastByUnit.set(unitId, { lat, lng, ts });
+    // Guardar última posición
+    const tmap = getTenantMap(tenantId);
+    tmap.set(unitId, { lat, lng, ts });
+    
+    // === PERSISTENCIA DESACOPLADA (ENCOLAR) ===
+    persistQueue.push({
+      tenantId: ws.tenantId,
+      unitId: ws.unitId,
+      lat,
+      lng,
+      ts
+    });
+    
+    if (persistQueue.length > MAX_QUEUE) {
+      persistQueue.shift();
+    }    
 
-      // Redistribuir a todos los tableros conectados
-      broadcast(payload);
-
+    
+      broadcastToTenant(tenantId, {
+        v: 1,
+        type: 'pos',
+        tenantId,
+        unitId,
+        lat,
+        lng,
+        ts
+      });
+    
       return;
     }
 
@@ -97,6 +261,7 @@ wss.on('connection', (ws, req) => {
 
   ws.on('close', () => {
     console.log('WS disconnected');
+    stats.connections--;
   });
 
   ws.on('error', (err) => {
@@ -119,3 +284,31 @@ setInterval(() => {
 server.listen(PORT, () => {
   console.log(`Twybox WS core listening on port ${PORT}`);
 });
+
+
+setInterval(() => {
+  const now = Date.now();
+
+  for (const [tenantId, tmap] of lastByTenant.entries()) {
+    for (const [unitId, data] of tmap.entries()) {
+      if (now - data.ts > UNIT_TTL_MS) {
+        // eliminar unidad inactiva
+        tmap.delete(unitId);
+
+        // notificar offline al tenant
+        broadcastToTenant(tenantId, {
+          v: 1,
+          type: 'offline',
+          tenantId,
+          unitId,
+          ts: now
+        });
+      }
+    }
+
+    // si el tenant quedó vacío, limpiarlo
+    if (tmap.size === 0) {
+      lastByTenant.delete(tenantId);
+    }
+  }
+}, CLEAN_EVERY_MS);
