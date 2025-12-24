@@ -108,7 +108,6 @@ function getTenantTsMap(tenantId) {
   return lastSeenTsByTenant.get(tenantId);
 }
 
-tmap.set(unitId, { lat, lng, ts, status });
 function broadcastToTenant(tenantId, obj) {
   const msg = JSON.stringify(obj);
   for (const client of wss.clients) {
@@ -327,7 +326,9 @@ wss.on('connection', (ws, req) => {
     // -----------------------------------------------------       
     if (persistQueue.length > MAX_QUEUE) {
       persistQueue.shift();
-    }        
+    }      
+      tmap.set(unitId, { lat, lng, ts, status });
+  
       broadcastToTenant(tenantId, {
         v: 1,
         type: 'pos',
