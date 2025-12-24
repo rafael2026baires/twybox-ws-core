@@ -264,7 +264,6 @@ wss.on('connection', (ws, req) => {
     const prev = tmap.get(unitId); // puede ser undefined        
     // -------------------------------------------------------    
     // === FILTRO DE SALTO IMPOSIBLE ===
-    const prev = tmap.get(unitId);
     if (prev) {
       const dtSec = (ts - prev.ts) / 1000;
       if (dtSec > 0) {
