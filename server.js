@@ -259,9 +259,31 @@ wss.on('connection', (ws, req) => {
         }
       }
     }
-    // -----------------------------------------------------
-
-        
+    // -----------------------------------------------------  
+    // === ESTADO DE MOVIMIENTO ===
+    let status = 'stopped';
+    
+    const prev2 = tmap.get(unitId);
+    if (prev2) {
+      const R = 6371000;
+      const toRad = x => x * Math.PI / 180;
+    
+      const dLat = toRad(lat - prev2.lat);
+      const dLng = toRad(lng - prev2.lng);
+    
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(prev2.lat)) *
+        Math.cos(toRad(lat)) *
+        Math.sin(dLng / 2) ** 2;
+    
+      const distM = 2 * R * Math.asin(Math.sqrt(a));
+    
+      if (distM >= 10) {
+        status = 'moving';
+      }
+    }
+    // -----------------------------------------------------        
     // === PERSISTENCIA DESACOPLADA (ENCOLAR) ===
     persistQueue.push({
       tenantId: ws.tenantId,
@@ -273,9 +295,7 @@ wss.on('connection', (ws, req) => {
     
     if (persistQueue.length > MAX_QUEUE) {
       persistQueue.shift();
-    }    
-
-    
+    }        
       broadcastToTenant(tenantId, {
         v: 1,
         type: 'pos',
@@ -323,8 +343,6 @@ setInterval(() => {
 server.listen(PORT, () => {
   console.log(`Twybox WS core listening on port ${PORT}`);
 });
-
-
 setInterval(() => {
   const now = Date.now();
 
