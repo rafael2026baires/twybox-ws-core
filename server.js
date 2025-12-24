@@ -18,60 +18,62 @@ console.log('>>> startPersistWorker() ejecutado <<<');
 
 // HTTP server (sirve para health y para "upgrade" a WebSocket)
 const server = http.createServer((req, res) => {
-    if (req.url === '/health') {
+
+  if (req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
-    ok: true,
-    ts: Date.now(),
-    clients: wss.clients.size
+      ok: true,
+      ts: Date.now(),
+      clients: wss.clients.size
     }));
     return;
-    }
-    
-    if (req.url === '/stats') {
+  }
+
+  if (req.url === '/stats') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
-    ok: true,
-    ts: Date.now(),
-    stats,
-    tenants: lastByTenant.size
+      ok: true,
+      ts: Date.now(),
+      stats,
+      tenants: lastByTenant.size
     }));
     return;
-    } 
+  }
 
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  if (req.url.startsWith('/last')) {
+    const url = new URL(req.url, 'http://localhost');
+    const tenantId = url.searchParams.get('tenantId');
 
-    if (req.url.startsWith('/last')) {
-      const url = new URL(req.url, 'http://localhost');
-      const tenantId = url.searchParams.get('tenantId');
-    
-      if (!tenantId) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'tenantId_required' }));
-        return;
-      }
-    
-      const tmap = lastByTenant.get(tenantId) || new Map();
-      const result = [];
-    
-      for (const [unitId, data] of tmap.entries()) {
-        result.push({
-          unitId,
-          lat: data.lat,
-          lng: data.lng,
-          ts: data.ts,
-          status: data.status || 'stopped'
-        });
-      }
-    
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        tenantId,
-        units: result,
-        ts: Date.now()
-      }));
+    if (!tenantId) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'tenantId_required' }));
       return;
-    }    
+    }
+
+    const tmap = lastByTenant.get(tenantId) || new Map();
+    const result = [];
+
+    for (const [unitId, data] of tmap.entries()) {
+      result.push({
+        unitId,
+        lat: data.lat,
+        lng: data.lng,
+        ts: data.ts,
+        status: data.status || 'stopped'
+      });
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      tenantId,
+      units: result,
+      ts: Date.now()
+    }));
+    return;
+  }
+
+  // DEFAULT
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
   res.end('Twybox WS core online. Use /health or WebSocket.\n');
 });
 
