@@ -261,8 +261,7 @@ wss.on('connection', (ws, req) => {
 
     // Guardar última posición
     const tmap = getTenantMap(tenantId);
-    tmap.set(unitId, { lat, lng, ts });
-        
+    tmap.set(unitId, { lat, lng, ts, status });        
     // -------------------------------------------------------    
     // === FILTRO DE SALTO IMPOSIBLE ===
     const prev = tmap.get(unitId);
