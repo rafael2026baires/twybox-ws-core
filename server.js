@@ -290,9 +290,10 @@ wss.on('connection', (ws, req) => {
       unitId: ws.unitId,
       lat,
       lng,
-      ts
+      ts,
+      status
     });
-    
+    // -----------------------------------------------------       
     if (persistQueue.length > MAX_QUEUE) {
       persistQueue.shift();
     }        
