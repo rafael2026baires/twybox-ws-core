@@ -279,7 +279,7 @@ wss.on('connection', (ws, req) => {
     
       const distM = 2 * R * Math.asin(Math.sqrt(a));
     
-      if (distM >= 10) {
+      if (distM >= 5) {
         status = 'moving';
       }
     }
