@@ -108,6 +108,7 @@ function getTenantTsMap(tenantId) {
   return lastSeenTsByTenant.get(tenantId);
 }
 
+tmap.set(unitId, { lat, lng, ts, status });
 function broadcastToTenant(tenantId, obj) {
   const msg = JSON.stringify(obj);
   for (const client of wss.clients) {
@@ -260,8 +261,8 @@ wss.on('connection', (ws, req) => {
     stats.posAccepted++;
 
     // Guardar última posición
-    const tmap = getTenantMap(tenantId);
-    tmap.set(unitId, { lat, lng, ts, status });        
+    const tmap = getTenantMap(tenantId);   
+    const prev = tmap.get(unitId); // puede ser undefined        
     // -------------------------------------------------------    
     // === FILTRO DE SALTO IMPOSIBLE ===
     const prev = tmap.get(unitId);
