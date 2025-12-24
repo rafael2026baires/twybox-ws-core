@@ -16,7 +16,6 @@ const MAX_QUEUE = 5000;
 startPersistWorker({ persistQueue });   // ✅ DESPUÉS
 console.log('>>> startPersistWorker() ejecutado <<<');
 
-
 // HTTP server (sirve para health y para "upgrade" a WebSocket)
 const server = http.createServer((req, res) => {
     if (req.url === '/health') {
@@ -181,10 +180,15 @@ wss.on('connection', (ws, req) => {
       const unitId   = String(msg.unitId || '').trim();
         
       const latRaw = Number(msg.lat);
-      const lngRaw = Number(msg.lng);        
-      // Normalización a grados decimales reales
-      const lat = latRaw / 1e6;
-      const lng = lngRaw / 1e6;
+      const lngRaw = Number(msg.lng);
+        
+      let lat = latRaw;
+      let lng = lngRaw;
+        
+      if (Math.abs(latRaw) > 90 || Math.abs(lngRaw) > 180) {
+          lat = latRaw / 1e6;
+          lng = lngRaw / 1e6;
+      }        
         
       const ts  = msg.ts ? Number(msg.ts) : Date.now();
     
