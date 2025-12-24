@@ -179,8 +179,13 @@ wss.on('connection', (ws, req) => {
         
       const tenantId = String(msg.tenantId || '').trim();
       const unitId   = String(msg.unitId || '').trim();
-      const lat = Number(msg.lat);
-      const lng = Number(msg.lng);
+        
+      const latRaw = Number(msg.lat);
+      const lngRaw = Number(msg.lng);        
+      // Normalización a grados decimales reales
+      const lat = latRaw / 1e6;
+      const lng = lngRaw / 1e6;
+        
       const ts  = msg.ts ? Number(msg.ts) : Date.now();
     
       if (!tenantId || !unitId || !Number.isFinite(lat) || !Number.isFinite(lng)) {
@@ -222,7 +227,6 @@ wss.on('connection', (ws, req) => {
     // Guardar última posición
     const tmap = getTenantMap(tenantId);
     tmap.set(unitId, { lat, lng, ts });
-
         
     // -------------------------------------------------------    
     // === FILTRO DE SALTO IMPOSIBLE ===
