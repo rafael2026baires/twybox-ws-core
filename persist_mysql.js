@@ -33,14 +33,15 @@ function startPersistWorker({ persistQueue }) {
 
         await conn.execute(
           `INSERT INTO geo_units_last
-           (tenant_id, unit_id, lat, lng, server_ts, is_offline)
-           VALUES (?, ?, ?, ?, FROM_UNIXTIME(?/1000), 0)
+           (tenant_id, unit_id, lat, lng, server_ts, is_offline, status)
+           VALUES (?, ?, ?, ?, FROM_UNIXTIME(?/1000), 0, ?)
            ON DUPLICATE KEY UPDATE
              lat=VALUES(lat),
              lng=VALUES(lng),
              server_ts=VALUES(server_ts),
-             is_offline=0`,
-          [ev.tenantId, ev.unitId, ev.lat, ev.lng, ev.ts]
+             is_offline=0,
+             status=VALUES(status)`,
+          [ev.tenantId, ev.unitId, ev.lat, ev.lng, ev.ts, ev.status]
         );
       }
 
