@@ -1,3 +1,6 @@
+console.log('>>> kpi_daily.js CARGADO <<<');
+
+
 'use strict';
 
 async function handleKpiDaily(req, res) {
