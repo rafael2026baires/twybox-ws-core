@@ -24,7 +24,7 @@ async function handleKpiDaily(req, res) {
       return;
     }
 
-    // ===== ACA ESTA TU SELECT =====
+    // ----------------------------------------------------------------------------------------------------
     const [rows] = await pool.execute(
       `
       SELECT
@@ -43,7 +43,6 @@ async function handleKpiDaily(req, res) {
       `,
       [tenantId]
     );
-
     const [rowsEventos] = await pool.execute(
       `
       SELECT
@@ -56,19 +55,42 @@ async function handleKpiDaily(req, res) {
       `,
       [tenantId]
     );    
-
+    const [rowsMinutos] = await pool.execute(
+      `
+      SELECT
+        unit_id,
+        TIMESTAMPDIFF(
+          MINUTE,
+          MAX(server_ts),
+          NOW()
+        ) AS minutos_desde_ultima_senal
+      FROM geo_units_history
+      WHERE tenant_id = ?
+      GROUP BY unit_id
+      `,
+      [tenantId]
+    );    
+    // ----------------------------------------------------------------------------------------------------
     // indexar eventos por unit_id
     const eventosMap = {};
     for (const r of rowsEventos) {
       eventosMap[r.unit_id] = r.eventos_hoy;
     }
+
+    // indexar minutos desde última señal por unit_id
+    const minutosMap = {};
+    for (const r of rowsMinutos) {
+      minutosMap[r.unit_id] = r.minutos_desde_ultima_senal;
+    }   
     
     // unir presencia + eventos
     const units = rows.map(r => ({
       unit_id: r.unit_id,
       presencia: r.presencia,
-      eventos_hoy: eventosMap[r.unit_id] || 0
-    }));    
+      eventos_hoy: eventosMap[r.unit_id] || 0,
+      minutos_desde_ultima_senal: minutosMap[r.unit_id] ?? null
+    }));
+   
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
