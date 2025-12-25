@@ -13,6 +13,36 @@ const pool = mysql.createPool({
   connectionLimit: 5
 });
 
+function calcularEstadoOperativo(unit) {
+  // 1) Offline real (TTL vencido)
+  if (unit.is_offline === 1) {
+    return 'offline';
+  }
+  const min = unit.minutos_desde_ultima_senal;
+  const ev  = unit.eventos_hoy || 0;
+
+  // 2) Nunca reportó hoy
+  if (min === null) {
+    return 'sin_datos';
+  }
+  // 3) Reporta pero no se mueve
+  //   - hay eventos
+  //   - status detenido
+  if (ev > 0 && unit.status === 'stopped') {
+    return 'no_se_mueve';
+  }
+  // 4) Reporta normalmente (reciente)
+  if (min <= 10) {
+    return 'ok';
+  }
+  // 5) Reporta con demora
+  if (min <= 30) {
+    return 'demorado';
+  }
+  // 6) No reporta hace rato
+  return 'no_reporta';
+}
+
 async function handleKpiDaily(req, res) {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
