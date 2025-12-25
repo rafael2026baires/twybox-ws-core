@@ -123,16 +123,20 @@ async function handleKpiDaily(req, res) {
     }
     
     // unir presencia + eventos
-    const units = rows.map(r => ({
-      unit_id: r.unit_id,
-      presencia: r.presencia,
-      eventos_hoy: eventosMap[r.unit_id] || 0,
-      minutos_desde_ultima_senal: minutosMap[r.unit_id] ?? null,
-      inicio_dia: jornadaMap[r.unit_id]?.inicio_dia ?? null,
-      fin_dia: jornadaMap[r.unit_id]?.fin_dia ?? null,
-      status: offlineMap[r.unit_id]?.status ?? null,
-      is_offline: offlineMap[r.unit_id]?.is_offline ?? null
-    }));   
+    const units = rows.map(r => {
+      const unit = {
+        unit_id: r.unit_id,
+        presencia: r.presencia,
+        eventos_hoy: eventosMap[r.unit_id] || 0,
+        minutos_desde_ultima_senal: minutosMap[r.unit_id] ?? null,
+        inicio_dia: jornadaMap[r.unit_id]?.inicio_dia ?? null,
+        fin_dia: jornadaMap[r.unit_id]?.fin_dia ?? null,
+        status: offlineMap[r.unit_id]?.status ?? null,
+        is_offline: offlineMap[r.unit_id]?.is_offline ?? null
+      };
+      unit.estado_operativo = calcularEstadoOperativo(unit);
+      return unit;
+    }); 
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
