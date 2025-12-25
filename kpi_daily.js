@@ -83,6 +83,17 @@ async function handleKpiDaily(req, res) {
       `,
       [tenantId]
     );    
+    const [rowsOffline] = await pool.execute(
+      `
+      SELECT
+        unit_id,
+        status,
+        is_offline
+      FROM geo_units_last
+      WHERE tenant_id = ?
+      `,
+      [tenantId]
+    );    
     // ----------------------------------------------------------------------------------------------------
     // indexar eventos por unit_id
     const eventosMap = {};
@@ -101,7 +112,16 @@ async function handleKpiDaily(req, res) {
         inicio_dia: r.inicio_dia,
         fin_dia: r.fin_dia
       };
-    }       
+    }   
+    // indexar estado actual por unit_id
+    const offlineMap = {};
+    for (const r of rowsOffline) {
+      offlineMap[r.unit_id] = {
+        status: r.status,
+        is_offline: r.is_offline
+      };
+    }
+    
     // unir presencia + eventos
     const units = rows.map(r => ({
       unit_id: r.unit_id,
@@ -109,10 +129,10 @@ async function handleKpiDaily(req, res) {
       eventos_hoy: eventosMap[r.unit_id] || 0,
       minutos_desde_ultima_senal: minutosMap[r.unit_id] ?? null,
       inicio_dia: jornadaMap[r.unit_id]?.inicio_dia ?? null,
-      fin_dia: jornadaMap[r.unit_id]?.fin_dia ?? null
-    }));
-
-   
+      fin_dia: jornadaMap[r.unit_id]?.fin_dia ?? null,
+      status: offlineMap[r.unit_id]?.status ?? null,
+      is_offline: offlineMap[r.unit_id]?.is_offline ?? null
+    }));   
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
