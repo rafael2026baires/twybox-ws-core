@@ -59,7 +59,8 @@ const server = http.createServer((req, res) => {
         lat: data.lat,
         lng: data.lng,
         ts: data.ts,
-        status: data.status || 'stopped'
+        status: data.status || 'stopped',
+        isOffline: !!data.isOffline
       });
     }
 
@@ -328,8 +329,8 @@ wss.on('connection', (ws, req) => {
     if (persistQueue.length > MAX_QUEUE) {
       persistQueue.shift();
     }      
-      tmap.set(unitId, { lat, lng, ts, status });
-  
+      tmap.set(unitId, { lat, lng, ts, status, isOffline: false });
+      
       broadcastToTenant(tenantId, {
         v: 1,
         type: 'pos',
@@ -382,19 +383,20 @@ setInterval(() => {
 
   for (const [tenantId, tmap] of lastByTenant.entries()) {
     for (const [unitId, data] of tmap.entries()) {
-      if (now - data.ts > UNIT_TTL_MS) {
-        // eliminar unidad inactiva
-        tmap.delete(unitId);
-
-        // notificar offline al tenant
-        broadcastToTenant(tenantId, {
-          v: 1,
-          type: 'offline',
-          tenantId,
-          unitId,
-          ts: now
-        });
-      }
+        if (now - data.ts > UNIT_TTL_MS) {
+          // marcar offline (NO borrar)
+          data.isOffline = true;
+          data.status = 'offline';
+        
+          // notificar offline al tenant
+          broadcastToTenant(tenantId, {
+            v: 1,
+            type: 'offline',
+            tenantId,
+            unitId,
+            ts: now
+          });
+        }
     }
 
     // si el tenant quedó vacío, limpiarlo
