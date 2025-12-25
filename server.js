@@ -37,12 +37,26 @@ const server = http.createServer((req, res) => {
   }
 
   if (req.url === '/stats') {
+  
+    let unitsActive = 0;
+    let unitsOffline = 0;
+  
+    for (const tmap of lastByTenant.values()) {
+      for (const data of tmap.values()) {
+        if (data.isOffline) unitsOffline++;
+        else unitsActive++;
+      }
+    }
+  
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
-      ok: true,
       ts: Date.now(),
-      stats,
-      tenants: lastByTenant.size
+      connections: stats.connections,
+      posAccepted: stats.posAccepted,
+      posRejected: stats.posRejected,
+      unitsActive,
+      unitsOffline,
+      queue: persistQueue.length
     }));
     return;
   }
