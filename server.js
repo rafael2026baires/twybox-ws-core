@@ -7,13 +7,20 @@ const { startPersistWorker } = require('./persist_mysql'); // ✅ PRIMERO
 
 const PORT = process.env.PORT || 3000;
 
-const UNIT_TTL_MS = 3 * 60 * 1000;
-const CLEAN_EVERY_MS = 60 * 1000;
+/* ================== CONFIG CENTRAL ================== */
+const CFG = {
+  MIN_INTERVAL_MS: 10_000,        // throttle por unidad
+  UNIT_TTL_MS: 3 * 60 * 1000,     // offline
+  MOVE_THRESHOLD_M: 10,           // moving / stopped
+  MAX_JUMP_M: 300,                // salto imposible
+  CLEAN_EVERY_MS: 60 * 1000       // limpieza
+};
+/* ==================================================== */
 
 const persistQueue = [];
 const MAX_QUEUE = 5000;
 
-startPersistWorker({ persistQueue });   // ✅ DESPUÉS
+startPersistWorker({ persistQueue });
 console.log('>>> startPersistWorker() ejecutado <<<');
 
 // HTTP server (sirve para health y para "upgrade" a WebSocket)
@@ -243,7 +250,7 @@ wss.on('connection', (ws, req) => {
 
     
     // Throttle: aceptar ~1 evento cada 10s por unidad
-    const MIN_INTERVAL = 10_000; // 10 segundos
+    const MIN_INTERVAL = CFG.MIN_INTERVAL_MS;
     
     const tsMap = getTenantTsMap(tenantId);
     const lastTs = tsMap.get(unitId) || 0;
@@ -285,7 +292,7 @@ wss.on('connection', (ws, req) => {
         const distM = 2 * R * Math.asin(Math.sqrt(a));
     
         // umbral: 300 m en ~10 s
-        if (distM > 300 && dtSec <= 20) {
+        if (distM > CFG.MAX_JUMP_M && dtSec <= 20) {
           // salto imposible → ignorar
           return;
         }
@@ -311,7 +318,7 @@ wss.on('connection', (ws, req) => {
     
       const distM = 2 * R * Math.asin(Math.sqrt(a));
     
-      if (distM >= 10) {
+      if (distM >= CFG.MOVE_THRESHOLD_M)
         status = 'moving';
       }
     }
@@ -383,7 +390,8 @@ setInterval(() => {
 
   for (const [tenantId, tmap] of lastByTenant.entries()) {
     for (const [unitId, data] of tmap.entries()) {
-        if (now - data.ts > UNIT_TTL_MS) {
+        if (now - data.ts > CFG.UNIT_TTL_MS)
+
           // marcar offline (NO borrar)
           data.isOffline = true;
           data.status = 'offline';
