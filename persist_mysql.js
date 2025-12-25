@@ -24,6 +24,19 @@ function startPersistWorker({ persistQueue }) {
       const conn = await pool.getConnection();
 
       for (const ev of batch) {
+
+        // === EVENTO OFFLINE ===
+        if (ev.type === 'offline') {
+          await conn.execute(
+            `UPDATE geo_units_last
+             SET is_offline = 1,
+                 status = 'offline'
+             WHERE tenant_id = ? AND unit_id = ?`,
+            [ev.tenantId, ev.unitId]
+          );
+          continue;
+        }
+        
         await conn.execute(
           `INSERT INTO geo_units_history
            (tenant_id, unit_id, lat, lng, server_ts)
