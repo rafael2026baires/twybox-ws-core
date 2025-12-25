@@ -332,7 +332,7 @@ wss.on('connection', (ws, req) => {
     
       const distM = 2 * R * Math.asin(Math.sqrt(a));
     
-      if (distM >= CFG.MOVE_THRESHOLD_M)
+      if (distM >= CFG.MOVE_THRESHOLD_M) {
         status = 'moving';
       }
     }
@@ -404,7 +404,7 @@ setInterval(() => {
 
   for (const [tenantId, tmap] of lastByTenant.entries()) {
     for (const [unitId, data] of tmap.entries()) {
-        if (now - data.ts > CFG.UNIT_TTL_MS)
+        if (now - data.ts > CFG.UNIT_TTL_MS) {
 
           // marcar offline (NO borrar)
           data.isOffline = true;
@@ -426,4 +426,5 @@ setInterval(() => {
       lastByTenant.delete(tenantId);
     }
   }
-}, CLEAN_EVERY_MS);
+}, CFG.CLEAN_EVERY_MS);
+
