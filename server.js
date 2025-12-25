@@ -420,6 +420,14 @@ setInterval(() => {
           // marcar offline (NO borrar)
           data.isOffline = true;
           data.status = 'offline';
+
+          // === PERSISTIR OFFLINE EN DB ===
+          persistQueue.push({
+            type: 'offline',
+            tenantId,
+            unitId,
+            server_ts: new Date(data.ts)
+          });          
         
           // notificar offline al tenant
           broadcastToTenant(tenantId, {
