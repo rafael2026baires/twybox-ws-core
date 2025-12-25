@@ -3,7 +3,9 @@
 const http = require('http');
 const WebSocket = require('ws');
 
-const { startPersistWorker } = require('./persist_mysql'); // ✅ PRIMERO
+const { startPersistWorker } = require('./persist_mysql');
+const { handleKpiDaily } = require('./kpi_daily');
+
 
 const PORT = process.env.PORT || 3000;
 
@@ -75,16 +77,13 @@ const server = http.createServer((req, res) => {
   if (req.url.startsWith('/last')) {
     const url = new URL(req.url, 'http://localhost');
     const tenantId = url.searchParams.get('tenantId');
-
     if (!tenantId) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'tenantId_required' }));
       return;
     }
-
     const tmap = lastByTenant.get(tenantId) || new Map();
     const result = [];
-
     for (const [unitId, data] of tmap.entries()) {
       result.push({
         unitId,
@@ -95,7 +94,6 @@ const server = http.createServer((req, res) => {
         isOffline: !!data.isOffline
       });
     }
-
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       tenantId,
@@ -104,6 +102,10 @@ const server = http.createServer((req, res) => {
     }));
     return;
   }
+
+  if (req.url.startsWith('/kpi/daily')) {
+    return handleKpiDaily(req, res);
+  }  
 
   // DEFAULT
   res.writeHead(200, { 'Content-Type': 'text/plain' });
