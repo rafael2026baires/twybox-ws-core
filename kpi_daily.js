@@ -69,6 +69,19 @@ async function handleKpiDaily(req, res) {
       GROUP BY unit_id
       `,
       [tenantId]
+    );  
+    const [rowsJornada] = await pool.execute(
+      `
+      SELECT
+        unit_id,
+        MIN(server_ts) AS inicio_dia,
+        MAX(server_ts) AS fin_dia
+      FROM geo_units_history
+      WHERE tenant_id = ?
+        AND server_ts >= CURDATE()
+      GROUP BY unit_id
+      `,
+      [tenantId]
     );    
     // ----------------------------------------------------------------------------------------------------
     // indexar eventos por unit_id
@@ -76,20 +89,29 @@ async function handleKpiDaily(req, res) {
     for (const r of rowsEventos) {
       eventosMap[r.unit_id] = r.eventos_hoy;
     }
-
     // indexar minutos desde última señal por unit_id
     const minutosMap = {};
     for (const r of rowsMinutos) {
       minutosMap[r.unit_id] = r.minutos_desde_ultima_senal;
     }   
-    
+    // indexar inicio / fin por unit_id
+    const jornadaMap = {};
+    for (const r of rowsJornada) {
+      jornadaMap[r.unit_id] = {
+        inicio_dia: r.inicio_dia,
+        fin_dia: r.fin_dia
+      };
+    }       
     // unir presencia + eventos
     const units = rows.map(r => ({
       unit_id: r.unit_id,
       presencia: r.presencia,
       eventos_hoy: eventosMap[r.unit_id] || 0,
-      minutos_desde_ultima_senal: minutosMap[r.unit_id] ?? null
+      minutos_desde_ultima_senal: minutosMap[r.unit_id] ?? null,
+      inicio_dia: jornadaMap[r.unit_id]?.inicio_dia ?? null,
+      fin_dia: jornadaMap[r.unit_id]?.fin_dia ?? null
     }));
+
    
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
