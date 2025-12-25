@@ -44,10 +44,36 @@ async function handleKpiDaily(req, res) {
       [tenantId]
     );
 
+    const [rowsEventos] = await pool.execute(
+      `
+      SELECT
+        unit_id,
+        COUNT(*) AS eventos_hoy
+      FROM geo_units_history
+      WHERE tenant_id = ?
+        AND server_ts >= CURDATE()
+      GROUP BY unit_id
+      `,
+      [tenantId]
+    );    
+
+    // indexar eventos por unit_id
+    const eventosMap = {};
+    for (const r of rowsEventos) {
+      eventosMap[r.unit_id] = r.eventos_hoy;
+    }
+    
+    // unir presencia + eventos
+    const units = rows.map(r => ({
+      unit_id: r.unit_id,
+      presencia: r.presencia,
+      eventos_hoy: eventosMap[r.unit_id] || 0
+    }));    
+
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       tenantId,
-      units: rows
+      units
     }));
 
   } catch (err) {
