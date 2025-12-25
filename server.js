@@ -60,7 +60,7 @@ const server = http.createServer((req, res) => {
     }));
     return;
   }
-
+  
   if (req.url.startsWith('/last')) {
     const url = new URL(req.url, 'http://localhost');
     const tenantId = url.searchParams.get('tenantId');
