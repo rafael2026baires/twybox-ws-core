@@ -44,20 +44,22 @@ function startPersistWorker({ persistQueue }) {
           [ev.tenantId, ev.unitId, ev.lat, ev.lng, ev.ts]
         );
 
+        const movingSostenido = ev.estado_operativo === 'moving_sostenido' ? 1 : 0;        
         await conn.execute(
           `INSERT INTO geo_units_last
-           (tenant_id, unit_id, lat, lng, server_ts, is_offline, status)
-           VALUES (?, ?, ?, ?, FROM_UNIXTIME(?/1000), 0, ?)
+           (tenant_id, unit_id, lat, lng, server_ts, is_offline, status, moving_sostenido)
+           VALUES (?, ?, ?, ?, FROM_UNIXTIME(?/1000), 0, ?, ?)
            ON DUPLICATE KEY UPDATE
              lat=VALUES(lat),
              lng=VALUES(lng),
              server_ts=VALUES(server_ts),
              is_offline=0,
-             status=VALUES(status)`,
-          [ev.tenantId, ev.unitId, ev.lat, ev.lng, ev.ts, ev.status]
-        );
+             status=VALUES(status),
+             moving_sostenido=VALUES(moving_sostenido)`,
+          [ev.tenantId, ev.unitId, ev.lat, ev.lng, ev.ts, ev.status, movingSostenido]
+        );      
       }
-
+      
       conn.release();
       console.log('[persist] mysql ok:', batch.length);
 
