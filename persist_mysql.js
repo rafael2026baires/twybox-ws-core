@@ -46,16 +46,18 @@ function startPersistWorker({ persistQueue }) {
         );   
         await conn.execute(
           `INSERT INTO geo_units_last
-           (tenant_id, unit_id, lat, lng, server_ts, is_offline, status, estado_operativo)
-           VALUES (?, ?, ?, ?, FROM_UNIXTIME(?/1000), 0, ?, ?)
-           ON DUPLICATE KEY UPDATE
-             lat=VALUES(lat),
-             lng=VALUES(lng),
-             server_ts=VALUES(server_ts),
-             is_offline=0,
-             status=VALUES(status),
-             estado_operativo=VALUES(estado_operativo)`,
-          [ev.tenantId, ev.unitId, ev.lat, ev.lng, ev.ts, ev.status, ev.estado_operativo]
+            (tenant_id, unit_id, lat, lng, server_ts, is_offline, status, estado_operativo, moving_streak)
+            VALUES (?, ?, ?, ?, FROM_UNIXTIME(?/1000), 0, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+              lat=VALUES(lat),
+              lng=VALUES(lng),
+              server_ts=VALUES(server_ts),
+              is_offline=0,
+              status=VALUES(status),
+              estado_operativo=VALUES(estado_operativo),
+              moving_streak=VALUES(moving_streak)
+            `,
+          [ev.tenantId, ev.unitId, ev.lat, ev.lng, ev.ts, ev.status, ev.estado_operativo, ev.moving_streak]
         );
     
       }
