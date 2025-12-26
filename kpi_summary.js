@@ -28,12 +28,12 @@ async function handleKpiSummary(req, res) {
       `
       SELECT
         COUNT(*)                                   AS total_units,
-        SUM(is_offline = 0)                        AS online,
-        SUM(is_offline = 1)                        AS offline,
-        SUM(estado_operativo = 'moving')           AS moving,
-        SUM(estado_operativo = 'stopped')          AS stopped
+        SUM(is_offline = 0) + 0                    AS online,
+        SUM(is_offline = 1) + 0                    AS offline,
+        SUM(estado_operativo = 'moving') + 0       AS moving,
+        SUM(estado_operativo = 'stopped') + 0      AS stopped
       FROM geo_units_last
-      WHERE tenant_id = ?
+      WHERE tenant_id = ?;
       `,
       [tenantId]
     );
