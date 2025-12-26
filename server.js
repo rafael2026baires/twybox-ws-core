@@ -372,12 +372,7 @@ wss.on('connection', (ws, req) => {
       }
     } else {
       moving_streak = status === 'moving' ? 1 : 0;
-    }
-    
-    // estado operativo CORE (simple)
-    let estado_operativo = 'stopped';
-    if (status === 'moving') estado_operativo = 'moving';
-      
+    }   
 
     const estado_operativo = calcularEstadoOperativoCore({
       status,
