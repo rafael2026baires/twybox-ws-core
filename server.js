@@ -5,6 +5,7 @@ const WebSocket = require('ws');
 
 const { startPersistWorker } = require('./persist_mysql');
 const { handleKpiDaily } = require('./kpi_daily');
+const { handleKpiSummary } = require('./kpi_summary');
 
 
 const PORT = process.env.PORT || 3000;
@@ -102,6 +103,10 @@ const server = http.createServer((req, res) => {
 
   if (req.url.startsWith('/kpi/daily')) {
     return handleKpiDaily(req, res);
+  }  
+
+  if (req.url.startsWith('/kpi/summary')) {
+    return handleKpiSummary(req, res);
   }  
 
   // DEFAULT
