@@ -28,20 +28,26 @@ async function handleKpiSummary(req, res) {
       `
       SELECT
         COUNT(*)                                   AS total_units,
-        SUM(is_offline = 0) + 0                    AS online,
-        SUM(is_offline = 1) + 0                    AS offline,
-        SUM(estado_operativo = 'moving') + 0       AS moving,
-        SUM(estado_operativo = 'stopped') + 0      AS stopped
+        SUM(is_offline = 0)                        AS online,
+        SUM(is_offline = 1)                        AS offline,
+        SUM(estado_operativo = 'moving')           AS moving,
+        SUM(estado_operativo = 'stopped')          AS stopped
       FROM geo_units_last
-      WHERE tenant_id = ?;
+      WHERE tenant_id = ?
       `,
       [tenantId]
     );
 
+    const r = rows[0];
+
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       tenantId,
-      ...rows[0]
+      total_units: Number(r.total_units),
+      online: Number(r.online),
+      offline: Number(r.offline),
+      moving: Number(r.moving),
+      stopped: Number(r.stopped)
     }));
 
   } catch (err) {
