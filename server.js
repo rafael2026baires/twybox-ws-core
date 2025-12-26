@@ -372,13 +372,14 @@ wss.on('connection', (ws, req) => {
       lng,
       ts,
       status,
-      estado_operativo      
+      moving_streak,
+      estado_operativo
     });
     // -----------------------------------------------------       
     if (persistQueue.length > MAX_QUEUE) {
       persistQueue.shift();
     }      
-      tmap.set(unitId, { lat, lng, ts, status, isOffline: false });
+      tmap.set(unitId, { lat, lng, ts, status, isOffline: false,  moving_streak, estado_operativo });
       
       broadcastToTenant(tenantId, {
         v: 1,
