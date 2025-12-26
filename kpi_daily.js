@@ -63,7 +63,18 @@ async function handleKpiDaily(req, res) {
       res.end(JSON.stringify({ error: 'tenantId_required' }));
       return;
     }
-
+    // ----------------------------------------------------------------------------------------------------
+    const [cfgRows] = await pool.execute(
+      `
+      SELECT timezone, day_start_hour
+      FROM tenant_config
+      WHERE tenant_id = ?
+      `,
+      [tenantId]
+    );
+    
+    const timezone = cfgRows[0]?.timezone || 'UTC';
+    const dayStartHour = cfgRows[0]?.day_start_hour ?? 0;
     // ----------------------------------------------------------------------------------------------------
     const [rows] = await pool.execute(
       `
@@ -77,11 +88,22 @@ async function handleKpiDaily(req, res) {
       LEFT JOIN geo_units_history h
         ON h.tenant_id = u.tenant_id
        AND h.unit_id   = u.unit_id
-       AND h.server_ts >= CURDATE()
+       AND h.server_ts >= CONVERT_TZ(
+            TIMESTAMP(
+              DATE(CONVERT_TZ(NOW(), 'UTC', ?)),
+              MAKETIME(?, 0, 0)
+            ),
+            ?, 'UTC'
+          )
       WHERE u.tenant_id = ?
       GROUP BY u.unit_id
       `,
-      [tenantId]
+      [
+        timezone,        // ? 1
+        dayStartHour,    // ? 2
+        timezone,        // ? 3
+        tenantId         // ? 4
+      ]
     );
     const [rowsEventos] = await pool.execute(
       `
