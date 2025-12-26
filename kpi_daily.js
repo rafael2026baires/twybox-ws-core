@@ -16,20 +16,10 @@ const pool = mysql.createPool({
 function calcularEstadoOperativo(unit) {
   if (unit.is_offline === 1) return 'offline';
 
-  const min = unit.minutos_desde_ultima_senal;
-  const ev  = unit.eventos_hoy || 0;
-
-  if (min === null) return 'sin_datos';
- 
-  // moving aislado
+  if (unit.moving_streak >= 3) return 'moving_sostenido';
   if (unit.status === 'moving') return 'moving_ocasional';
-  
-  // reporta pero no se mueve
-  if (ev > 0 && unit.status === 'stopped') return 'no_se_mueve';
-  if (min <= 10) return 'ok';
-  if (min <= 30) return 'demorado';
 
-  return 'no_reporta';
+  return 'stopped';
 }
 
 async function handleKpiDaily(req, res) {
@@ -136,12 +126,13 @@ async function handleKpiDaily(req, res) {
       SELECT
         unit_id,
         status,
-        is_offline
+        is_offline,
+        moving_streak
       FROM geo_units_last
       WHERE tenant_id = ?
       `,
       [tenantId]
-    );    
+    );   
     // ----------------------------------------------------------------------------------------------------
     // indexar eventos por unit_id
     const eventosMap = {};
@@ -166,22 +157,24 @@ async function handleKpiDaily(req, res) {
     for (const r of rowsOffline) {
       offlineMap[r.unit_id] = {
         status: r.status,
-        is_offline: r.is_offline
+        is_offline: r.is_offline,
+        moving_streak: r.moving_streak || 0
       };
     }
     
     // unir presencia + eventos
     const units = rows.map(r => {
-      const unit = {
-        unit_id: r.unit_id,
-        presencia: r.presencia,
-        eventos_hoy: eventosMap[r.unit_id] || 0,
-        minutos_desde_ultima_senal: minutosMap[r.unit_id] ?? null,
-        inicio_dia: jornadaMap[r.unit_id]?.inicio_dia ?? null,
-        fin_dia: jornadaMap[r.unit_id]?.fin_dia ?? null,
-        status: offlineMap[r.unit_id]?.status ?? null,
-        is_offline: offlineMap[r.unit_id]?.is_offline ?? null
-      };
+        const unit = {
+          unit_id: r.unit_id,
+          presencia: r.presencia,
+          eventos_hoy: eventosMap[r.unit_id] || 0,
+          minutos_desde_ultima_senal: minutosMap[r.unit_id] ?? null,
+          inicio_dia: jornadaMap[r.unit_id]?.inicio_dia ?? null,
+          fin_dia: jornadaMap[r.unit_id]?.fin_dia ?? null,
+          status: offlineMap[r.unit_id]?.status ?? null,
+          is_offline: offlineMap[r.unit_id]?.is_offline ?? null,
+          moving_streak: offlineMap[r.unit_id]?.moving_streak ?? 0
+        };
       unit.estado_operativo = calcularEstadoOperativo(unit);
       return unit;
     }); 
