@@ -3,6 +3,7 @@
 console.log('>>> kpi_daily.js CARGADO <<<');
 
 const mysql = require('mysql2/promise');
+const { DateTime } = require('luxon');
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
@@ -15,10 +16,8 @@ const pool = mysql.createPool({
 
 function calcularEstadoOperativo(unit) {
   if (unit.is_offline === 1) return 'offline';
-
   if (unit.moving_streak >= 3) return 'moving_sostenido';
   if (unit.status === 'moving') return 'moving_ocasional';
-
   return 'stopped';
 }
 
@@ -32,158 +31,99 @@ async function handleKpiDaily(req, res) {
       res.end(JSON.stringify({ error: 'tenantId_required' }));
       return;
     }
-    // ----------------------------------------------------------------------------------------------------
+
+    // 1️⃣ Config del tenant
     const [cfgRows] = await pool.execute(
-      `
-      SELECT timezone, day_start_hour
-      FROM tenant_config
-      WHERE tenant_id = ?
-      `,
+      `SELECT timezone, day_start_hour FROM tenant_config WHERE tenant_id = ?`,
       [tenantId]
     );
-    
+
     const timezone = cfgRows[0]?.timezone || 'UTC';
     const dayStartHour = cfgRows[0]?.day_start_hour ?? 0;
-    // ----------------------------------------------------------------------------------------------------
+
+    // 2️⃣ Calcular inicio de día OPERATIVO EN JS
+    const dayStart = DateTime
+      .now()
+      .setZone(timezone)
+      .startOf('day')
+      .plus({ hours: dayStartHour })
+      .toUTC()
+      .toSQL({ includeOffset: false });
+
+    // 3️⃣ Presencia
     const [rows] = await pool.execute(
       `
       SELECT
         u.unit_id,
-        CASE
-          WHEN COUNT(h.id) > 0 THEN 'presente'
-          ELSE 'ausente'
-        END AS presencia
+        CASE WHEN COUNT(h.id) > 0 THEN 'presente' ELSE 'ausente' END AS presencia
       FROM geo_units_last u
       LEFT JOIN geo_units_history h
         ON h.tenant_id = u.tenant_id
-       AND h.unit_id   = u.unit_id
-       AND h.server_ts >= CONVERT_TZ(
-            TIMESTAMP(
-              DATE(CONVERT_TZ(NOW(), 'UTC', ?)),
-              MAKETIME(?, 0, 0)
-            ),
-            ?, 'UTC'
-          )
+       AND h.unit_id = u.unit_id
+       AND h.server_ts >= ?
       WHERE u.tenant_id = ?
       GROUP BY u.unit_id
       `,
-      [timezone, dayStartHour, timezone, tenantId]
+      [dayStart, tenantId]
     );
+
+    // 4️⃣ Eventos hoy
     const [rowsEventos] = await pool.execute(
       `
-      SELECT
-        unit_id,
-        COUNT(*) AS eventos_hoy
+      SELECT unit_id, COUNT(*) AS eventos_hoy
       FROM geo_units_history
-      WHERE tenant_id = ?
-        AND server_ts >= CONVERT_TZ(
-          TIMESTAMP(
-            DATE(CONVERT_TZ(NOW(), 'UTC', ?)),
-            MAKETIME(?, 0, 0)
-          ),
-          ?, 'UTC'
-        )
+      WHERE tenant_id = ? AND server_ts >= ?
       GROUP BY unit_id
       `,
-      [tenantId, timezone, dayStartHour, timezone]
-    );    
-    const [rowsMinutos] = await pool.execute(
-      `
-      SELECT
-        unit_id,
-        TIMESTAMPDIFF(
-          MINUTE,
-          MAX(server_ts),
-          NOW()
-        ) AS minutos_desde_ultima_senal
-      FROM geo_units_history
-      WHERE tenant_id = ?
-      GROUP BY unit_id
-      `,
-      [tenantId]
-    );  
+      [tenantId, dayStart]
+    );
+
+    // 5️⃣ Jornada
     const [rowsJornada] = await pool.execute(
       `
-      SELECT
-        unit_id,
-        MIN(server_ts) AS inicio_dia,
-        MAX(server_ts) AS fin_dia
+      SELECT unit_id,
+             MIN(server_ts) AS inicio_dia,
+             MAX(server_ts) AS fin_dia
       FROM geo_units_history
-      WHERE tenant_id = ?
-        AND server_ts >= CONVERT_TZ(
-          TIMESTAMP(
-            DATE(CONVERT_TZ(NOW(), 'UTC', ?)),
-            MAKETIME(?, 0, 0)
-          ),
-          ?, 'UTC'
-        )
+      WHERE tenant_id = ? AND server_ts >= ?
       GROUP BY unit_id
       `,
-      [tenantId, timezone, dayStartHour, timezone]
-    );    
+      [tenantId, dayStart]
+    );
+
+    // 6️⃣ Estado actual
     const [rowsOffline] = await pool.execute(
       `
-      SELECT
-        unit_id,
-        status,
-        is_offline,
-        moving_streak
+      SELECT unit_id, status, is_offline, moving_streak
       FROM geo_units_last
       WHERE tenant_id = ?
       `,
       [tenantId]
-    );   
-    // ----------------------------------------------------------------------------------------------------
-    // indexar eventos por unit_id
-    const eventosMap = {};
-    for (const r of rowsEventos) {
-      eventosMap[r.unit_id] = r.eventos_hoy;
-    }
-    // indexar minutos desde última señal por unit_id
-    const minutosMap = {};
-    for (const r of rowsMinutos) {
-      minutosMap[r.unit_id] = r.minutos_desde_ultima_senal;
-    }   
-    // indexar inicio / fin por unit_id
-    const jornadaMap = {};
-    for (const r of rowsJornada) {
-      jornadaMap[r.unit_id] = {
-        inicio_dia: r.inicio_dia,
-        fin_dia: r.fin_dia
-      };
-    }   
-    // indexar estado actual por unit_id
-    const offlineMap = {};
-    for (const r of rowsOffline) {
-      offlineMap[r.unit_id] = {
-        status: r.status,
-        is_offline: r.is_offline,
-        moving_streak: r.moving_streak || 0
-      };
-    }
-    
-    // unir presencia + eventos
+    );
+
+    // Maps
+    const eventosMap = Object.fromEntries(rowsEventos.map(r => [r.unit_id, r.eventos_hoy]));
+    const jornadaMap = Object.fromEntries(rowsJornada.map(r => [r.unit_id, r]));
+    const offlineMap = Object.fromEntries(rowsOffline.map(r => [r.unit_id, r]));
+
     const units = rows.map(r => {
-        const unit = {
-          unit_id: r.unit_id,
-          presencia: r.presencia,
-          eventos_hoy: eventosMap[r.unit_id] || 0,
-          minutos_desde_ultima_senal: minutosMap[r.unit_id] ?? null,
-          inicio_dia: jornadaMap[r.unit_id]?.inicio_dia ?? null,
-          fin_dia: jornadaMap[r.unit_id]?.fin_dia ?? null,
-          status: offlineMap[r.unit_id]?.status ?? null,
-          is_offline: offlineMap[r.unit_id]?.is_offline ?? null,
-          moving_streak: offlineMap[r.unit_id]?.moving_streak ?? 0
-        };
+      const base = offlineMap[r.unit_id] || {};
+      const unit = {
+        unit_id: r.unit_id,
+        presencia: r.presencia,
+        eventos_hoy: eventosMap[r.unit_id] || 0,
+        inicio_dia: jornadaMap[r.unit_id]?.inicio_dia || null,
+        fin_dia: jornadaMap[r.unit_id]?.fin_dia || null,
+        status: base.status || null,
+        is_offline: base.is_offline || 0,
+        moving_streak: base.moving_streak || 0
+      };
       unit.estado_operativo = calcularEstadoOperativo(unit);
       return unit;
-    }); 
+    });
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      tenantId,
-      units
-    }));
+    res.end(JSON.stringify({ tenantId, dayStart, units }));
 
   } catch (err) {
     console.error('[kpi_daily]', err);
