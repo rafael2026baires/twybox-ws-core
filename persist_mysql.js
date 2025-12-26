@@ -30,7 +30,8 @@ function startPersistWorker({ persistQueue }) {
           await conn.execute(
             `UPDATE geo_units_last
              SET is_offline = 1,
-                 status = 'offline'
+                 status = 'offline',
+                 estado_operativo = 'offline'
              WHERE tenant_id = ? AND unit_id = ?`,
             [ev.tenantId, ev.unitId]
           );
