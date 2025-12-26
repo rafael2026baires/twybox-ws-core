@@ -13,33 +13,43 @@ const pool = mysql.createPool({
   connectionLimit: 5
 });
 
-function calcularEstadoOperativo(unit) {
-  // 1) Offline real (TTL vencido)
-  if (unit.is_offline === 1) {
-    return 'offline';
+// memoria simple por proceso (no persistente)
+const movingStreak = new Map();
+// key: unit_id → value: cantidad de moving consecutivos
+
+function actualizarMovingSostenido(unit) {
+  const key = unit.unit_id;
+  if (unit.status === 'moving') {
+    const prev = movingStreak.get(key) || 0;
+    movingStreak.set(key, prev + 1);
+  } else {
+    movingStreak.set(key, 0);
   }
+  return movingStreak.get(key) || 0;
+}
+
+function calcularEstadoOperativo(unit) {
+  if (unit.is_offline === 1) return 'offline';
+
   const min = unit.minutos_desde_ultima_senal;
   const ev  = unit.eventos_hoy || 0;
 
-  // 2) Nunca reportó hoy
-  if (min === null) {
-    return 'sin_datos';
-  }
-  // 3) Reporta pero no se mueve
-  //   - hay eventos
-  //   - status detenido
-  if (ev > 0 && unit.status === 'stopped') {
-    return 'no_se_mueve';
-  }
-  // 4) Reporta normalmente (reciente)
-  if (min <= 10) {
-    return 'ok';
-  }
-  // 5) Reporta con demora
-  if (min <= 30) {
-    return 'demorado';
-  }
-  // 6) No reporta hace rato
+  if (min === null) return 'sin_datos';
+
+  // actualizar streak de moving
+  const streak = actualizarMovingSostenido(unit);
+  
+  // moving sostenido (3 eventos consecutivos)
+  if (streak >= 3) return 'moving_sostenido';
+  
+  // moving aislado
+  if (unit.status === 'moving') return 'moving_ocasional';
+  
+  // reporta pero no se mueve
+  if (ev > 0 && unit.status === 'stopped') return 'no_se_mueve';
+  if (min <= 10) return 'ok';
+  if (min <= 30) return 'demorado';
+
   return 'no_reporta';
 }
 
