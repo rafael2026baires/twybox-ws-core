@@ -366,7 +366,8 @@ wss.on('connection', (ws, req) => {
       lat,
       lng,
       ts,
-      status
+      status,
+      estado_operativo      
     });
     // -----------------------------------------------------       
     if (persistQueue.length > MAX_QUEUE) {
