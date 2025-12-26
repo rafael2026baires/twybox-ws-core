@@ -13,21 +13,6 @@ const pool = mysql.createPool({
   connectionLimit: 5
 });
 
-// memoria simple por proceso (no persistente)
-const movingStreak = new Map();
-// key: unit_id → value: cantidad de moving consecutivos
-
-function actualizarMovingSostenido(unit) {
-  const key = unit.unit_id;
-  if (unit.status === 'moving') {
-    const prev = movingStreak.get(key) || 0;
-    movingStreak.set(key, prev + 1);
-  } else {
-    movingStreak.set(key, 0);
-  }
-  return movingStreak.get(key) || 0;
-}
-
 function calcularEstadoOperativo(unit) {
   if (unit.is_offline === 1) return 'offline';
 
@@ -35,13 +20,7 @@ function calcularEstadoOperativo(unit) {
   const ev  = unit.eventos_hoy || 0;
 
   if (min === null) return 'sin_datos';
-
-  // actualizar streak de moving
-  const streak = actualizarMovingSostenido(unit);
-  
-  // moving sostenido (3 eventos consecutivos)
-  if (streak >= 3) return 'moving_sostenido';
-  
+ 
   // moving aislado
   if (unit.status === 'moving') return 'moving_ocasional';
   
