@@ -359,6 +359,26 @@ wss.on('connection', (ws, req) => {
       }
     }
 
+    // === MOVING STREAK PERSISTENTE ===
+    let moving_streak = 0;
+    
+    if (prev2) {
+      const prevStreak = prev2.moving_streak || 0;
+    
+      if (status === 'moving') {
+        moving_streak = prevStreak + 1;
+      } else {
+        moving_streak = 0;
+      }
+    } else {
+      moving_streak = status === 'moving' ? 1 : 0;
+    }
+    
+    // estado operativo CORE (simple)
+    let estado_operativo = 'stopped';
+    if (status === 'moving') estado_operativo = 'moving';
+      
+
     const estado_operativo = calcularEstadoOperativoCore({
       status,
       isOffline: false
@@ -372,14 +392,14 @@ wss.on('connection', (ws, req) => {
       lng,
       ts,
       status,
-      moving_streak,
-      estado_operativo
+      estado_operativo,
+      moving_streak
     });
     // -----------------------------------------------------       
     if (persistQueue.length > MAX_QUEUE) {
       persistQueue.shift();
     }      
-      tmap.set(unitId, { lat, lng, ts, status, isOffline: false,  moving_streak, estado_operativo });
+      tmap.set(unitId, { lat, lng, ts, status, isOffline: false, estado_operativo, moving_streak});
       
       broadcastToTenant(tenantId, {
         v: 1,
