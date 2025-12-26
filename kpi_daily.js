@@ -98,12 +98,7 @@ async function handleKpiDaily(req, res) {
       WHERE u.tenant_id = ?
       GROUP BY u.unit_id
       `,
-      [
-        timezone,        // ? 1
-        dayStartHour,    // ? 2
-        timezone,        // ? 3
-        tenantId         // ? 4
-      ]
+      [timezone, dayStartHour, timezone, tenantId]
     );
     const [rowsEventos] = await pool.execute(
       `
@@ -112,10 +107,16 @@ async function handleKpiDaily(req, res) {
         COUNT(*) AS eventos_hoy
       FROM geo_units_history
       WHERE tenant_id = ?
-        AND server_ts >= CURDATE()
+        AND server_ts >= CONVERT_TZ(
+          TIMESTAMP(
+            DATE(CONVERT_TZ(NOW(), 'UTC', ?)),
+            MAKETIME(?, 0, 0)
+          ),
+          ?, 'UTC'
+        )
       GROUP BY unit_id
       `,
-      [tenantId]
+      [tenantId, timezone, dayStartHour, timezone]
     );    
     const [rowsMinutos] = await pool.execute(
       `
@@ -140,10 +141,16 @@ async function handleKpiDaily(req, res) {
         MAX(server_ts) AS fin_dia
       FROM geo_units_history
       WHERE tenant_id = ?
-        AND server_ts >= CURDATE()
+        AND server_ts >= CONVERT_TZ(
+          TIMESTAMP(
+            DATE(CONVERT_TZ(NOW(), 'UTC', ?)),
+            MAKETIME(?, 0, 0)
+          ),
+          ?, 'UTC'
+        )
       GROUP BY unit_id
       `,
-      [tenantId]
+      [tenantId, timezone, dayStartHour, timezone]
     );    
     const [rowsOffline] = await pool.execute(
       `
