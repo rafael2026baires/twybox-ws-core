@@ -154,6 +154,13 @@ function broadcastToTenant(tenantId, obj) {
   }
 }
 
+// helpers
+function calcularEstadoOperativoCore({ status, isOffline }) {
+  if (isOffline) return 'offline';
+  if (status === 'moving') return 'moving';
+  return 'stopped';
+}
+
 wss.on('connection', (ws, req) => {
     
   ws.tenantId = null;
@@ -346,6 +353,11 @@ wss.on('connection', (ws, req) => {
         status = 'moving';
       }
     }
+
+    const estado_operativo = calcularEstadoOperativoCore({
+      status,
+      isOffline: false
+    });       
     // -----------------------------------------------------        
     // === PERSISTENCIA DESACOPLADA (ENCOLAR) ===
     persistQueue.push({
