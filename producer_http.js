@@ -1,5 +1,3 @@
-const fetch = require('node-fetch');
-
 const INGEST_URL = 'https://twybox360.com/sistemas/geolocalizacion/demo/ingest_point.php';
 
 async function sendPoint() {
