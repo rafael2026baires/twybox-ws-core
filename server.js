@@ -14,7 +14,7 @@ const INGEST_URL = 'https://twybox360.com/sistemas/geolocalizacion/demo/ingest_p
 
 const fs = require('fs');
 
-const SIMU_MODE = true; // ← SOLO PARA LA PRUEBA
+const SIMU_MODE = process.env.SIMU_MODE === '1'; // ← SOLO PARA LA PRUEBA
 const SIMU_FILE = './simu_viaje_110.json';
 
 let simuData = [];
