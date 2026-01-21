@@ -10,8 +10,20 @@ const { handleKpiSummary } = require('./kpi_summary');
 const PORT = process.env.PORT || 3000;
 
 // === HTTP INGEST (preparación, no activo aún) ===
-
 const INGEST_URL = 'https://twybox360.com/sistemas/geolocalizacion/demo/ingest_point.php';
+
+const fs = require('fs');
+
+const SIMU_MODE = true; // ← SOLO PARA LA PRUEBA
+const SIMU_FILE = './simu_viaje_110.json';
+
+let simuData = [];
+let simuIdx = 0;
+
+if (SIMU_MODE) {
+  simuData = JSON.parse(fs.readFileSync(SIMU_FILE, 'utf8'));
+  console.log('[SIMU] registros cargados:', simuData.length);
+}
 
 async function sendToIngest(point) {
   try {
@@ -469,6 +481,27 @@ setInterval(() => {
 server.listen(PORT, () => {
   console.log(`Twybox WS core listening on port ${PORT}`);
 });
+
+if (SIMU_MODE) {
+  setInterval(() => {
+    if (simuIdx >= simuData.length) {
+      console.log('[SIMU] fin del recorrido');
+      return;
+    }
+
+    const p = simuData[simuIdx++];
+
+    sendToIngest({
+      tenant_id: p.tenant_id,
+      unit_id:   p.unit_id,
+      lat:       p.lat,
+      lng:       p.lng,
+      server_ts: new Date().toISOString().slice(0,19).replace('T',' ')
+    });
+
+    console.log('[SIMU] punto enviado', simuIdx);
+  }, 10_000);
+}
 setInterval(() => {
   const now = Date.now();
 
