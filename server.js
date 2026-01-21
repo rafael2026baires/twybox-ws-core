@@ -14,8 +14,6 @@ const INGEST_URL = 'https://twybox360.com/sistemas/geolocalizacion/demo/ingest_p
 
 const fs = require('fs');
 
-const SIMU_RUN = process.env.SIMU_RUN || Date.now();
-
 const SIMU_MODE = process.env.SIMU_MODE === '1'; // ← SOLO PARA LA PRUEBA
 const SIMU_FILE = './simu_viaje_110.json';
 
@@ -516,11 +514,12 @@ if (SIMU_MODE) {
 
         sendToIngest({
           tenant_id: p.tenant_id,
-          unit_id:   `${p.unit_id}-${SIMU_RUN}`,
+          unit_id:   p.unit_id,
           lat:       p.lat,
           lng:       p.lng,
           server_ts: new Date().toISOString().slice(0,19).replace('T',' ')
         });
+
         console.log(`[SIMU ${idx+1}] punto enviado ${i}`);
 
       }, 10_000);
