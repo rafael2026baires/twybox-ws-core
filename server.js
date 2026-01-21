@@ -27,7 +27,6 @@ async function sendToIngest(point) {
     console.error('[INGEST ERROR]', err.message);
   }
 }
-
 /* ================== CONFIG CENTRAL ================== */
 const CFG = {
   MIN_INTERVAL_MS: 10_000,        // throttle por unidad
