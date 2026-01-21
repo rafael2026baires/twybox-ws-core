@@ -398,6 +398,7 @@ wss.on('connection', (ws, req) => {
     });       
     // -----------------------------------------------------        
     // === PERSISTENCIA DESACOPLADA (ENCOLAR) ===
+    /*  
     persistQueue.push({
       tenantId: ws.tenantId,
       unitId: ws.unitId,
@@ -408,7 +409,7 @@ wss.on('connection', (ws, req) => {
       estado_operativo,
       moving_streak
     });
-
+    */ 
       sendToIngest({
       tenant_id: ws.tenantId,
       unit_id: ws.unitId,
