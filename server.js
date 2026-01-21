@@ -7,8 +7,6 @@ const { startPersistWorker } = require('./persist_mysql');
 const { handleKpiDaily } = require('./kpi_daily');
 const { handleKpiSummary } = require('./kpi_summary');
 
-const fetch = require('node-fetch');
-
 const PORT = process.env.PORT || 3000;
 
 // === HTTP INGEST (preparación, no activo aún) ===
