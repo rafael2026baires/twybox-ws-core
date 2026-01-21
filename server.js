@@ -7,8 +7,26 @@ const { startPersistWorker } = require('./persist_mysql');
 const { handleKpiDaily } = require('./kpi_daily');
 const { handleKpiSummary } = require('./kpi_summary');
 
-
 const PORT = process.env.PORT || 3000;
+
+// === HTTP INGEST (preparación, no activo aún) ===
+
+const INGEST_URL = 'https://twybox360.com/sistemas/geolocalizacion/demo/ingest_point.php';
+
+async function sendToIngest(point) {
+  try {
+    const r = await fetch(INGEST_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(point)
+    });
+
+    const j = await r.json();
+    return j;
+  } catch (err) {
+    console.error('[INGEST ERROR]', err.message);
+  }
+}
 
 /* ================== CONFIG CENTRAL ================== */
 const CFG = {
