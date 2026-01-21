@@ -483,26 +483,52 @@ server.listen(PORT, () => {
 });
 
 if (SIMU_MODE) {
-  const simuTimer = setInterval(() => {
-    if (simuIdx >= simuData.length) {
-      console.log('[SIMU] fin del recorrido');
-      clearInterval(simuTimer);
-      return;
-    }
 
-    const p = simuData[simuIdx++];
+  const SIMULATIONS = [
+    { file: './simu_viaje_101.json', delayMs: 0 },
+    { file: './simu_viaje_102.json', delayMs: 5_000 },
+    { file: './simu_viaje_103.json', delayMs: 10_000 },
+    { file: './simu_viaje_104.json', delayMs: 15_000 },
+    { file: './simu_viaje_105.json', delayMs: 20_000 },
+    { file: './simu_viaje_106.json', delayMs: 25_000 }
+  ];
 
-    sendToIngest({
-      tenant_id: p.tenant_id,
-      unit_id:   p.unit_id,
-      lat:       p.lat,
-      lng:       p.lng,
-      server_ts: new Date().toISOString().slice(0,19).replace('T',' ')
-    });
+  SIMULATIONS.forEach((sim, idx) => {
 
-    console.log('[SIMU] punto enviado', simuIdx);
-  }, 10_000);
+    const data = JSON.parse(fs.readFileSync(sim.file, 'utf8'));
+    let i = 0;
+
+    console.log(`[SIMU ${idx+1}] cargado ${data.length} puntos`);
+
+    setTimeout(() => {
+
+      const timer = setInterval(() => {
+
+        if (i >= data.length) {
+          console.log(`[SIMU ${idx+1}] fin del recorrido`);
+          clearInterval(timer);
+          return;
+        }
+
+        const p = data[i++];
+
+        sendToIngest({
+          tenant_id: p.tenant_id,
+          unit_id:   p.unit_id,
+          lat:       p.lat,
+          lng:       p.lng,
+          server_ts: new Date().toISOString().slice(0,19).replace('T',' ')
+        });
+
+        console.log(`[SIMU ${idx+1}] punto enviado ${i}`);
+
+      }, 10_000);
+
+    }, sim.delayMs);
+
+  });
 }
+
 setInterval(() => {
   const now = Date.now();
 
