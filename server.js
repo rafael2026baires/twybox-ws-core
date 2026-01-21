@@ -408,6 +408,14 @@ wss.on('connection', (ws, req) => {
       estado_operativo,
       moving_streak
     });
+
+      sendToIngest({
+      tenant_id: ws.tenantId,
+      unit_id: ws.unitId,
+      lat,
+      lng,
+      server_ts: new Date(ts).toISOString().slice(0, 19).replace('T', ' ')
+    });      
     // -----------------------------------------------------       
     if (persistQueue.length > MAX_QUEUE) {
       persistQueue.shift();
