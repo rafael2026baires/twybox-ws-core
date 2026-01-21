@@ -483,9 +483,10 @@ server.listen(PORT, () => {
 });
 
 if (SIMU_MODE) {
-  setInterval(() => {
+  const simuTimer = setInterval(() => {
     if (simuIdx >= simuData.length) {
       console.log('[SIMU] fin del recorrido');
+      clearInterval(simuTimer);
       return;
     }
 
