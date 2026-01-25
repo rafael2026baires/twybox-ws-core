@@ -10,7 +10,7 @@ const { handleKpiSummary } = require('./kpi_summary');
 const PORT = process.env.PORT || 3000;
 
 // === HTTP INGEST (preparación, no activo aún) ===
-const INGEST_URL = 'https://twybox360.com/sistemas/geolocalizacion/geo_core/ingest_point.php';
+const INGEST_URL = 'https://twybox360.com/sistemas/geolocalizacion/demo/ingest_point.php';
 
 const fs = require('fs');
 
