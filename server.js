@@ -485,9 +485,7 @@ server.listen(PORT, () => {
 if (SIMU_MODE) {
 
   const SIMULATIONS = [
-    { file: './simu_viaje_110.json', delayMs: 5_000 },
-    { file: './simu_viaje_120.json', delayMs: 10_000 },
-    { file: './simu_viaje_131.json', delayMs: 25_000 }
+    { file: './simu_viaje_120.json', delayMs: 10_000 }
   ];
 
   SIMULATIONS.forEach((sim, idx) => {
