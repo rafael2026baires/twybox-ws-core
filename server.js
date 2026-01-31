@@ -486,8 +486,11 @@ if (SIMU_MODE) {
 
   const SIMULATIONS = [
     { file: './simu_viaje_110.json', delayMs: 5_000 },
+    { file: './simu_viaje_111.json', delayMs: 8_000 },
     { file: './simu_viaje_120.json', delayMs: 10_000 },
-    { file: './simu_viaje_131.json', delayMs: 25_000 }
+    { file: './simu_viaje_121.json', delayMs: 15_000 },
+    { file: './simu_viaje_130.json', delayMs: 17_000 },
+    { file: './simu_viaje_131.json', delayMs: 12_000 }
   ];
 
   SIMULATIONS.forEach((sim, idx) => {
