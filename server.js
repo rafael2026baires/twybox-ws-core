@@ -495,18 +495,23 @@ if (SIMU_MODE) {
   ];
   */
   
-  const SIMULATIONS = [
-    { file: './simu_viaje_108.json', delayMs: 5_000 },       // 5 segundos
-    { file: './simu_viaje_109.json', delayMs: 240_000 },     // 4 minutos
-    { file: './simu_viaje_110.json', delayMs: 480_000 },     // 8 minutos
-    { file: './simu_viaje_111.json', delayMs: 3_000 },       // 5 segundos
-    { file: './simu_viaje_119.json', delayMs: 10_000 },     // 10 segundos
-    { file: './simu_viaje_120.json', delayMs: 180_000 },    //  3 minutos
-    { file: './simu_viaje_121.json', delayMs: 15_000 },     // 15 segundos
-    { file: './simu_viaje_129.json', delayMs: 17_000 },     // 16 segundos
-    { file: './simu_viaje_130.json', delayMs: 240_000 },    //  4 minutos
-    { file: './simu_viaje_131.json', delayMs: 13_000 }      // 14 segundos 
-  ];  
+const SIMULATIONS = [
+  { file: './simu_viaje_108.json', delayMs: 30_000 },    // 30 seg       ida colectivo 142
+  { file: './simu_viaje_109.json', delayMs: 160_000 },   // 2 minut + 30 seg  ida colectivo 142
+  { file: './simu_viaje_110.json', delayMs: 270_000 },   // 4 minut + 30 seg  ida colectivo 142
+  { file: './simu_viaje_111.json', delayMs: 60_000 },    // 60 seg vuelta colectivo 134 
+  { file: './simu_viaje_112.json', delayMs: 185_000 },   // 3 minut + 5 seg vuelta colectivo 134
+  { file: './simu_viaje_113.json', delayMs: 365_000 },   // 3 minut + 5 seg vuelta colectivo 134
+  { file: './simu_viaje_118.json', delayMs: 120_000 },   // 2 minutos ida dante 76
+  { file: './simu_viaje_119.json', delayMs: 240_000 },   // 4 minutos ida dante 76
+  { file: './simu_viaje_120.json', delayMs: 360_000 },   //  6 minutos  ida dante 76
+  { file: './simu_viaje_121.json', delayMs: 15_000 },    // 15 segundos vuelta dante 79
+  { file: './simu_viaje_122.json', delayMs: 15_000 },    // 15 segundos vuelta dante 79
+  { file: './simu_viaje_129.json', delayMs: 65_000 },    // 65 segundos ida cerámicos 76
+  { file: './simu_viaje_130.json', delayMs: 180_000 },   //  3 minutos  ida cerámicos 76
+  { file: './simu_viaje_131.json', delayMs: 5_000 },     // 5 segundos vuelta cerámicos 154  
+  { file: './simu_viaje_132.json', delayMs: 360_000 }    // 6 minutos  vuelta cerámicos 154 
+];  
 
   SIMULATIONS.forEach((sim, idx) => {
 
