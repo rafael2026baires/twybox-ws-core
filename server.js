@@ -484,6 +484,7 @@ server.listen(PORT, () => {
 
 if (SIMU_MODE) {
 
+  /*
   const SIMULATIONS = [
     { file: './simu_viaje_110.json', delayMs: 5_000 },
     { file: './simu_viaje_111.json', delayMs: 8_000 },
@@ -492,6 +493,20 @@ if (SIMU_MODE) {
     { file: './simu_viaje_130.json', delayMs: 17_000 },
     { file: './simu_viaje_131.json', delayMs: 12_000 }
   ];
+  */
+  
+  const SIMULATIONS = [
+    { file: './simu_viaje_108.json', delayMs: 5_000 },       // 5 segundos
+    { file: './simu_viaje_109.json', delayMs: 240_000 },     // 4 minutos
+    { file: './simu_viaje_110.json', delayMs: 480_000 },     // 8 minutos
+    { file: './simu_viaje_111.json', delayMs: 3_000 },       // 5 segundos
+    { file: './simu_viaje_119.json', delayMs: 10_000 },     // 10 segundos
+    { file: './simu_viaje_120.json', delayMs: 180_000 },    //  3 minutos
+    { file: './simu_viaje_121.json', delayMs: 15_000 },     // 15 segundos
+    { file: './simu_viaje_129.json', delayMs: 17_000 },     // 16 segundos
+    { file: './simu_viaje_130.json', delayMs: 240_000 },    //  4 minutos
+    { file: './simu_viaje_131.json', delayMs: 13_000 }      // 14 segundos 
+  ];  
 
   SIMULATIONS.forEach((sim, idx) => {
 
